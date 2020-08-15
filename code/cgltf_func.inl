@@ -519,9 +519,15 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 		vmc2bvh_quaternion q = { node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3]	 };
 		const auto degree = quaternion_to_degree(q);
 
-		*stream << std::fixed << std::setprecision(7) 
-			<< node->translation[0] << " " << node->translation[1] << " " << (-node->translation[2]) << " " 
-			<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
+		if (is_root) {
+			*stream << std::fixed << std::setprecision(7)
+				<< node->translation[0] << " " << node->translation[1] << " " << (-node->translation[2]) << " "
+				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
+		}
+		else {
+			*stream << std::fixed << std::setprecision(7)
+				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
+		}
 	}
 
 	for (cgltf_size i = 0; i < node->children_count; i++) {
@@ -567,10 +573,14 @@ static void bvh_traverse_bones(cgltf_node* node, vmc2bvh_traverse_state* state)
 
 	bvh_indent(state);
 	*stream << "OFFSET " << std::fixed << std::setprecision(7) << node->translation[0] << " " << node->translation[1] << " " << (-node->translation[2]) << std::endl;
-	if (node->children_count > 0) {
+	if (is_root) {
 		bvh_indent(state);
 		*stream << "CHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation" << std::endl;
 		state->channels_count += 6;
+	} else if (node->children_count > 0) {
+		bvh_indent(state);
+		*stream << "CHANNELS 3 Xrotation Yrotation Zrotation" << std::endl;
+		state->channels_count += 3;
 	}
 	for (cgltf_size i = 0; i < node->children_count; i++) {
 		bvh_traverse_bones(node->children[i], state);
