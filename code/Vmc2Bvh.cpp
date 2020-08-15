@@ -54,11 +54,13 @@ public:
 					if (result == cgltf_result_success) {
 						cgltf_size index;
 						if (vrm_get_root_bone(data, options.rootbone, &index)) {
-							state.vrm_received = true;
 							std::cout << "[INFO] root bone found at " << index << " name: " << data->nodes[index].name << std::endl;
 							rootnode = &data->nodes[index];
 
-							// Constructs humanoid-bone => node mapping and write HIERARCHY
+							// Constructs humanoid-bone => node mapping 
+							humanoid_mapping = vrm_get_humanoid_mapping(data);
+
+							// Write HIERARCHY
 							std::wofstream ofstream_HIERARCHY(options.bvhfile_HIERARCHY);
 							state.ofstream_HIERARCHY = &ofstream_HIERARCHY;
 							state.ofstream_MOTION = &ofstream_MOTION;
@@ -66,6 +68,8 @@ public:
 
 							// Write first MOTION
 							bvh_traverse_bone_motion(rootnode, &state, true);
+
+							state.vrm_received = true;
 						}
 						else {
 							std::cout << "[ERROR] Unable to find root bone. Please specify root bone name with --bone option" << std::endl;
@@ -98,12 +102,37 @@ public:
 			rootnode->rotation[1] = qy;
 			rootnode->rotation[2] = qz;
 			rootnode->rotation[3] = qw;
+		}
+		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Bone/Pos") == 0) {
+			const auto name = (arg++)->AsStringUnchecked();
+			const auto px = (arg++)->AsFloatUnchecked();
+			const auto py = (arg++)->AsFloatUnchecked();
+			const auto pz = (arg++)->AsFloatUnchecked();
+			const auto qx = (arg++)->AsFloatUnchecked();
+			const auto qy = (arg++)->AsFloatUnchecked();
+			const auto qz = (arg++)->AsFloatUnchecked();
+			const auto qw = (arg++)->AsFloatUnchecked();
+
+
+			cgltf_node* node = vrm_get_humanoid_bone(name, &humanoid_mapping);
+
+			if (node != nullptr) {
+				node->translation[0] = px;
+				node->translation[1] = py;
+				node->translation[2] = pz;
+				node->rotation[0] = qx;
+				node->rotation[1] = qy;
+				node->rotation[2] = qz;
+				node->rotation[3] = qw;
+			}
 
 		}
 	}
 
 private:
 	cgltf_node* rootnode;
+	vmc2bvh_humanoid_mapping humanoid_mapping;
+
 	vmc2bvh_options options;
 	vmc2bvh_traverse_state state;
 	std::wofstream ofstream_MOTION;

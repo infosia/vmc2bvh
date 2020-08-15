@@ -6,7 +6,7 @@
 
 #define MATH_PI   3.14159265358979323846264338327950288
 
-typedef struct vmc2bvh_traverse_state
+struct vmc2bvh_traverse_state
 {
 	bool loaded;
 	bool vrm_received;
@@ -14,25 +14,432 @@ typedef struct vmc2bvh_traverse_state
 	std::uint8_t  indent;
 	std::wofstream* ofstream_MOTION;
 	std::wofstream* ofstream_HIERARCHY;
-} vmc2bvh_traverse_state;
+};
 
-typedef struct vmc2bvh_options
+struct vmc2bvh_options
 {
 	std::string rootbone;
 	std::string bvhfile;
 	std::string bvhfile_HIERARCHY;
 	std::string bvhfile_MOTION;
-} vmc2bvh_options;
+};
 
-typedef struct vmc2bvh_quaternion {
+struct vmc2bvh_quaternion {
 	double x, y, z, w;
-} vmc2bvh_quaternion;
+};
 
-typedef struct vmc2bvh_degree {
+struct vmc2bvh_degree {
 	double roll, pitch, yaw;
-} vmc2bvh_degree;
+};
 
-static vmc2bvh_degree quaternion_to_degree(vmc2bvh_quaternion q) {
+struct vmc2bvh_humanoid_mapping {
+	cgltf_node* hips;
+	cgltf_node* leftUpperLeg;
+	cgltf_node* rightUpperLeg;
+	cgltf_node* leftLowerLeg;
+	cgltf_node* rightLowerLeg;
+	cgltf_node* leftFoot;
+	cgltf_node* rightFoot;
+	cgltf_node* spine;
+	cgltf_node* chest;
+	cgltf_node* neck;
+	cgltf_node* head;
+	cgltf_node* leftShoulder;
+	cgltf_node* rightShoulder;
+	cgltf_node* leftUpperArm;
+	cgltf_node* rightUpperArm;
+	cgltf_node* leftLowerArm;
+	cgltf_node* rightLowerArm;
+	cgltf_node* leftHand;
+	cgltf_node* rightHand;
+	cgltf_node* leftToes;
+	cgltf_node* rightToes;
+	cgltf_node* leftEye;
+	cgltf_node* rightEye;
+	cgltf_node* jaw;
+	cgltf_node* leftThumbProximal;
+	cgltf_node* leftThumbIntermediate;
+	cgltf_node* leftThumbDistal;
+	cgltf_node* leftIndexProximal;
+	cgltf_node* leftIndexIntermediate;
+	cgltf_node* leftIndexDistal;
+	cgltf_node* leftMiddleProximal;
+	cgltf_node* leftMiddleIntermediate;
+	cgltf_node* leftMiddleDistal;
+	cgltf_node* leftRingProximal;
+	cgltf_node* leftRingIntermediate;
+	cgltf_node* leftRingDistal;
+	cgltf_node* leftLittleProximal;
+	cgltf_node* leftLittleIntermediate;
+	cgltf_node* leftLittleDistal;
+	cgltf_node* rightThumbProximal;
+	cgltf_node* rightThumbIntermediate;
+	cgltf_node* rightThumbDistal;
+	cgltf_node* rightIndexProximal;
+	cgltf_node* rightIndexIntermediate;
+	cgltf_node* rightIndexDistal;
+	cgltf_node* rightMiddleProximal;
+	cgltf_node* rightMiddleIntermediate;
+	cgltf_node* rightMiddleDistal;
+	cgltf_node* rightRingProximal;
+	cgltf_node* rightRingIntermediate;
+	cgltf_node* rightRingDistal;
+	cgltf_node* rightLittleProximal;
+	cgltf_node* rightLittleIntermediate;
+	cgltf_node* rightLittleDistal;
+	cgltf_node* upperChest;
+};
+
+static vmc2bvh_humanoid_mapping vrm_get_humanoid_mapping(const cgltf_data* data)
+{
+	vmc2bvh_humanoid_mapping mapping{};
+
+	for (cgltf_size i = 0; i < data->vrm.humanoid.humanBones_count; i++) {
+		const auto bone = data->vrm.humanoid.humanBones[i];
+		switch (bone.bone) {
+		case cgltf_vrm_humanoid_bone_bone_hips:
+			mapping.hips = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftUpperLeg:
+			mapping.leftUpperLeg = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightUpperLeg:
+			mapping.rightUpperLeg = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftLowerLeg:
+			mapping.leftLowerLeg = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightLowerLeg:
+			mapping.rightLowerLeg = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftFoot:
+			mapping.leftFoot = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightFoot:
+			mapping.rightFoot = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_spine:
+			mapping.spine = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_chest:
+			mapping.chest = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_neck:
+			mapping.neck = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_head:
+			mapping.head = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftShoulder:
+			mapping.leftShoulder = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightShoulder:
+			mapping.rightShoulder = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftUpperArm:
+			mapping.leftUpperArm = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightUpperArm:
+			mapping.rightUpperArm = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftLowerArm:
+			mapping.leftLowerArm = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightLowerArm:
+			mapping.rightLowerArm = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftHand:
+			mapping.leftHand = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightHand:
+			mapping.rightHand = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftToes:
+			mapping.leftToes = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightToes:
+			mapping.rightToes = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftEye:
+			mapping.leftEye = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightEye:
+			mapping.rightEye = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_jaw:
+			mapping.jaw = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftThumbProximal:
+			mapping.leftThumbProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftThumbIntermediate:
+			mapping.leftThumbIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftThumbDistal:
+			mapping.leftThumbDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftIndexProximal:
+			mapping.leftIndexProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftIndexIntermediate:
+			mapping.leftIndexIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftIndexDistal:
+			mapping.leftIndexDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftMiddleProximal:
+			mapping.leftMiddleProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftMiddleIntermediate:
+			mapping.leftMiddleIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftMiddleDistal:
+			mapping.leftMiddleDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftRingProximal:
+			mapping.leftRingProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftRingIntermediate:
+			mapping.leftRingIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftRingDistal:
+			mapping.leftRingDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftLittleProximal:
+			mapping.leftLittleProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftLittleIntermediate:
+			mapping.leftLittleIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_leftLittleDistal:
+			mapping.leftLittleDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightThumbProximal:
+			mapping.rightThumbProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightThumbIntermediate:
+			mapping.rightThumbIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightThumbDistal:
+			mapping.rightThumbDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightIndexProximal:
+			mapping.rightIndexProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightIndexIntermediate:
+			mapping.rightIndexIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightIndexDistal:
+			mapping.rightIndexDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightMiddleProximal:
+			mapping.rightMiddleProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightMiddleIntermediate:
+			mapping.rightMiddleIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightMiddleDistal:
+			mapping.rightMiddleDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightRingProximal:
+			mapping.rightRingProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightRingIntermediate:
+			mapping.rightRingIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightRingDistal:
+			mapping.rightRingDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightLittleProximal:
+			mapping.rightLittleProximal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightLittleIntermediate:
+			mapping.rightLittleIntermediate = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_rightLittleDistal:
+			mapping.rightLittleDistal = &data->nodes[bone.node];
+			break;
+		case cgltf_vrm_humanoid_bone_bone_upperChest:
+			mapping.upperChest = &data->nodes[bone.node];
+			break;
+		}
+	}
+
+	return mapping;
+}
+
+static cgltf_node* vrm_get_humanoid_bone(const char* name, vmc2bvh_humanoid_mapping* mapping)
+{
+	if (std::strcmp(name, "Hips") == 0) {
+		return mapping->hips;
+	}
+	else if (std::strcmp(name, "LeftUpperLeg") == 0) {
+		return mapping->leftUpperLeg;
+	}
+	else if (std::strcmp(name, "RightUpperLeg") == 0) {
+		return mapping->rightUpperLeg;
+	}
+	else if (std::strcmp(name, "LeftLowerLeg") == 0) {
+		return mapping->leftLowerLeg;
+	}
+	else if (std::strcmp(name, "RightLowerLeg") == 0) {
+		return mapping->rightLowerLeg;
+	}
+	else if (std::strcmp(name, "LeftFoot") == 0) {
+		return mapping->leftFoot;
+	}
+	else if (std::strcmp(name, "RightFoot") == 0) {
+		return mapping->rightFoot;
+	}
+	else if (std::strcmp(name, "Spine") == 0) {
+		return mapping->spine;
+	}
+	else if (std::strcmp(name, "Chest") == 0) {
+		return mapping->chest;
+	}
+	else if (std::strcmp(name, "Neck") == 0) {
+		return mapping->neck;
+	}
+	else if (std::strcmp(name, "Head") == 0) {
+		return mapping->head;
+	}
+	else if (std::strcmp(name, "LeftShoulder") == 0) {
+		return mapping->leftShoulder;
+	}
+	else if (std::strcmp(name, "RightShoulder") == 0) {
+		return mapping->rightShoulder;
+	}
+	else if (std::strcmp(name, "LeftUpperArm") == 0) {
+		return mapping->leftUpperArm;
+	}
+	else if (std::strcmp(name, "RightUpperArm") == 0) {
+		return mapping->rightUpperArm;
+	}
+	else if (std::strcmp(name, "LeftLowerArm") == 0) {
+		return mapping->leftLowerArm;
+	}
+	else if (std::strcmp(name, "RightLowerArm") == 0) {
+		return mapping->rightLowerArm;
+	}
+	else if (std::strcmp(name, "LeftHand") == 0) {
+		return mapping->leftHand;
+	}
+	else if (std::strcmp(name, "RightHand") == 0) {
+		return mapping->rightHand;
+	}
+	else if (std::strcmp(name, "LeftToes") == 0) {
+		return mapping->leftToes;
+	}
+	else if (std::strcmp(name, "RightToes") == 0) {
+		return mapping->rightToes;
+	}
+	else if (std::strcmp(name, "LeftEye") == 0) {
+		return mapping->leftEye;
+	}
+	else if (std::strcmp(name, "RightEye") == 0) {
+		return mapping->rightEye;
+	}
+	else if (std::strcmp(name, "Jaw") == 0) {
+		return mapping->jaw;
+	}
+	else if (std::strcmp(name, "LeftThumbProximal") == 0) {
+		return mapping->leftThumbProximal;
+	}
+	else if (std::strcmp(name, "LeftThumbIntermediate") == 0) {
+		return mapping->leftThumbIntermediate;
+	}
+	else if (std::strcmp(name, "LeftThumbDistal") == 0) {
+		return mapping->leftThumbDistal;
+	}
+	else if (std::strcmp(name, "LeftIndexProximal") == 0) {
+		return mapping->leftIndexProximal;
+	}
+	else if (std::strcmp(name, "LeftIndexIntermediate") == 0) {
+		return mapping->leftIndexIntermediate;
+	}
+	else if (std::strcmp(name, "LeftIndexDistal") == 0) {
+		return mapping->leftIndexDistal;
+	}
+	else if (std::strcmp(name, "LeftMiddleProximal") == 0) {
+		return mapping->leftMiddleProximal;
+	}
+	else if (std::strcmp(name, "LeftMiddleIntermediate") == 0) {
+		return mapping->leftMiddleIntermediate;
+	}
+	else if (std::strcmp(name, "LeftMiddleDistal") == 0) {
+		return mapping->leftMiddleDistal;
+	}
+	else if (std::strcmp(name, "LeftRingProximal") == 0) {
+		return mapping->leftRingProximal;
+	}
+	else if (std::strcmp(name, "LeftRingIntermediate") == 0) {
+		return mapping->leftRingIntermediate;
+	}
+	else if (std::strcmp(name, "LeftRingDistal") == 0) {
+		return mapping->leftRingDistal;
+	}
+	else if (std::strcmp(name, "LeftLittleProximal") == 0) {
+		return mapping->leftLittleProximal;
+	}
+	else if (std::strcmp(name, "LeftLittleIntermediate") == 0) {
+		return mapping->leftLittleIntermediate;
+	}
+	else if (std::strcmp(name, "LeftLittleDistal") == 0) {
+		return mapping->leftLittleDistal;
+	}
+	else if (std::strcmp(name, "RightThumbProximal") == 0) {
+		return mapping->rightThumbProximal;
+	}
+	else if (std::strcmp(name, "RightThumbIntermediate") == 0) {
+		return mapping->rightThumbIntermediate;
+	}
+	else if (std::strcmp(name, "RightThumbDistal") == 0) {
+		return mapping->rightThumbDistal;
+	}
+	else if (std::strcmp(name, "RightIndexProximal") == 0) {
+		return mapping->rightIndexProximal;
+	}
+	else if (std::strcmp(name, "RightIndexIntermediate") == 0) {
+		return mapping->rightIndexIntermediate;
+	}
+	else if (std::strcmp(name, "RightIndexDistal") == 0) {
+		return mapping->rightIndexDistal;
+	}
+	else if (std::strcmp(name, "RightMiddleProximal") == 0) {
+		return mapping->rightMiddleProximal;
+	}
+	else if (std::strcmp(name, "RightMiddleIntermediate") == 0) {
+		return mapping->rightMiddleIntermediate;
+	}
+	else if (std::strcmp(name, "RightMiddleDistal") == 0) {
+		return mapping->rightMiddleDistal;
+	}
+	else if (std::strcmp(name, "RightRingProximal") == 0) {
+		return mapping->rightRingProximal;
+	}
+	else if (std::strcmp(name, "RightRingIntermediate") == 0) {
+		return mapping->rightRingIntermediate;
+	}
+	else if (std::strcmp(name, "RightRingDistal") == 0) {
+		return mapping->rightRingDistal;
+	}
+	else if (std::strcmp(name, "RightLittleProximal") == 0) {
+		return mapping->rightLittleProximal;
+	}
+	else if (std::strcmp(name, "RightLittleIntermediate") == 0) {
+		return mapping->rightLittleIntermediate;
+	}
+	else if (std::strcmp(name, "RightLittleDistal") == 0) {
+		return mapping->rightLittleDistal;
+	}
+	else if (std::strcmp(name, "UpperChest") == 0) {
+		return mapping->upperChest;
+	}
+	return nullptr;
+}
+
+static vmc2bvh_degree quaternion_to_degree(vmc2bvh_quaternion q) 
+{
 	vmc2bvh_degree angles;
 
 	const auto F = (180.0 / MATH_PI);
