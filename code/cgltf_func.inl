@@ -438,27 +438,25 @@ static cgltf_node* vrm_get_humanoid_bone(const char* name, vmc2bvh_humanoid_mapp
 	return nullptr;
 }
 
-static vmc2bvh_degree quaternion_to_degree(vmc2bvh_quaternion q) 
+static void quaternion_to_degree_rot(double r11, double r12, double r21, double r31, double r32, vmc2bvh_degree* angles) {
+	const auto F = (180.0 / MATH_PI);
+
+	// zyx
+	angles->yaw   = atan2(r31, r32) * F;
+	angles->pitch = asin(r21) * F;
+	angles->roll  = atan2(r11, r12) * F;
+}
+
+static vmc2bvh_degree quaternion_to_degree(vmc2bvh_quaternion q)
 {
 	vmc2bvh_degree angles;
 
-	const auto F = (180.0 / MATH_PI);
-
-	double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
-	double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
-	angles.roll = std::atan2(sinr_cosp, cosr_cosp) * F;
-
-	double sinp = 2 * (q.w * q.y - q.z * q.x);
-	if (std::abs(sinp) >= 1) {
-		angles.pitch = std::copysign(MATH_PI / 2, sinp) * F;
-	}
-	else {
-		angles.pitch = std::asin(sinp) * F;
-	}
-
-	double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
-	double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-	angles.yaw = std::atan2(siny_cosp, cosy_cosp) * F;
+	// xyz
+	quaternion_to_degree_rot(-2 * (q.y * q.z - q.w * q.x),
+		q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+		2 * (q.x * q.z + q.w * q.y),
+		-2 * (q.x * q.y - q.w * q.z),
+		q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z, &angles);
 
 	return angles;
 }
