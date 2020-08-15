@@ -18,11 +18,10 @@ class Vmc2BvhPacketListener : public OscPacketListener {
 public:
 
 	Vmc2BvhPacketListener(const vmc2bvh_options options) : OscPacketListener()
-		, loaded(false)
 		, rootnode(nullptr)
 		, options(options)
-		, ofstream(options.bvhfile)
-		, state()
+		, ofstream_MOTION(options.bvhfile_MOTION)
+		, state{false, false, 0, 0, nullptr, nullptr}
 	{
 
 	}
@@ -33,17 +32,15 @@ public:
 	{
 		(void)remoteEndpoint; // UNUSED
 
-		state.ofstream = &ofstream;
-
 		auto arg = m.ArgumentsBegin();
 		const auto address = m.AddressPattern();
-		if (!loaded && std::strcmp(address, "/VMC/Ext/OK") == 0 && arg->IsInt32()) {
+		if (!state.loaded && std::strcmp(address, "/VMC/Ext/OK") == 0 && arg->IsInt32()) {
 			const auto value = (arg++)->AsInt32Unchecked();
 			if (value == 1) {
-				loaded = true;
+				state.loaded = true;
 			}
 		}
-		else if (loaded && std::strcmp(address, "/VMC/Ext/VRM") == 0) {
+		else if (!state.vrm_received && state.loaded && std::strcmp(address, "/VMC/Ext/VRM") == 0) {
 			if (arg->IsString()) {
 				const auto value = (arg++)->AsStringUnchecked();
 				if (strlen(value) > 0) {
@@ -57,33 +54,59 @@ public:
 					if (result == cgltf_result_success) {
 						cgltf_size index;
 						if (vrm_get_root_bone(data, options.rootbone, &index)) {
-							std::cout << "root bone found at " << index << " name: " << data->nodes[index].name << std::endl;
+							state.vrm_received = true;
+							std::cout << "[INFO] root bone found at " << index << " name: " << data->nodes[index].name << std::endl;
 							rootnode = &data->nodes[index];
+
+							// Constructs humanoid-bone => node mapping and write HIERARCHY
+							std::wofstream ofstream_HIERARCHY(options.bvhfile_HIERARCHY);
+							state.ofstream_HIERARCHY = &ofstream_HIERARCHY;
+							state.ofstream_MOTION = &ofstream_MOTION;
 							bvh_traverse_bones(rootnode, &state);
+
+							// Write first MOTION
+							bvh_traverse_bone_motion(rootnode, &state, true);
 						}
 						else {
-							std::cout << "Unable to find root bone! Please specify root bone name with --bone option" << std::endl;
+							std::cout << "[ERROR] Unable to find root bone. Please specify root bone name with --bone option" << std::endl;
 						}
 					}
 					else {
-						std::cout << "Unable to parse VRM file! Status: " << result << std::endl;
+						std::cout << "[ERROR] Unable to parse VRM file. Status: " << result << std::endl;
 					}
 
 				}
 
 			}
 		}
-		else if (loaded && rootnode != nullptr && std::strcmp(address, "/VMC/Ext/Root/Pos") == 0) {
+		else if (state.vrm_received && rootnode != nullptr && std::strcmp(address, "/VMC/Ext/Root/Pos") == 0) {
+
+			arg++; // ignore root bone name
+
+			const auto px = (arg++)->AsFloatUnchecked();
+			const auto py = (arg++)->AsFloatUnchecked();
+			const auto pz = (arg++)->AsFloatUnchecked();
+			const auto qx = (arg++)->AsFloatUnchecked();
+			const auto qy = (arg++)->AsFloatUnchecked();
+			const auto qz = (arg++)->AsFloatUnchecked();
+			const auto qw = (arg++)->AsFloatUnchecked();
+
+			rootnode->translation[0] = px;
+			rootnode->translation[1] = py;
+			rootnode->translation[2] = pz;
+			rootnode->rotation[0] = qx;
+			rootnode->rotation[1] = qy;
+			rootnode->rotation[2] = qz;
+			rootnode->rotation[3] = qw;
 
 		}
 	}
 
 private:
-	bool loaded;
 	cgltf_node* rootnode;
 	vmc2bvh_options options;
 	vmc2bvh_traverse_state state;
-	std::wofstream ofstream;
+	std::wofstream ofstream_MOTION;
 };
 
 int main(int argc, char* argv[])
@@ -105,17 +128,25 @@ int main(int argc, char* argv[])
 	options.rootbone = rootbone_name;
 	options.bvhfile  = bvhfile;
 
+	std::stringstream ss_HIERARCHY;
+	ss_HIERARCHY << bvhfile << ".HIERARCHY.txt";
+	options.bvhfile_HIERARCHY = ss_HIERARCHY.str();
+
+	std::stringstream ss_MOTION;
+	ss_MOTION << bvhfile << ".MOTION.txt";
+	options.bvhfile_MOTION = ss_MOTION.str();
+
 	Vmc2BvhPacketListener listener(options);
 	UdpListeningReceiveSocket s(
 			IpEndpointName( IpEndpointName::ANY_ADDRESS, port ),
 			&listener );
 
-	std::cout << "listening for input on port " << port << "..." << std::endl;
-	std::cout << "press ctrl-c to end" << std::endl;
+	std::cout << "[INFO] listening for input on port " << port << "..." << std::endl;
+	std::cout << "[INFO] press ctrl-c to end" << std::endl;
 
 	s.RunUntilSigInt();
 
-	std::cout << "finishing." << std::endl;
+	std::cout << "[INFO] finishing." << std::endl;
 
 	return 0;
 }
