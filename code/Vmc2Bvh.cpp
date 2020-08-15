@@ -22,6 +22,7 @@ public:
 		, options(options)
 		, ofstream_MOTION(options.bvhfile_MOTION)
 		, state{false, false, 0, 0, nullptr, nullptr}
+		, lasttime_checked(0)
 	{
 
 	}
@@ -35,8 +36,9 @@ public:
 		auto arg = m.ArgumentsBegin();
 		const auto address = m.AddressPattern();
 		if (!state.loaded && std::strcmp(address, "/VMC/Ext/OK") == 0 && arg->IsInt32()) {
-			const auto value = (arg++)->AsInt32Unchecked();
-			if (value == 1) {
+			const auto loaded = (arg++)->AsInt32Unchecked();
+			const auto calibrated = (arg++)->AsInt32Unchecked();
+			if (loaded == 1 && calibrated == 1) {
 				state.loaded = true;
 			}
 		}
@@ -80,7 +82,6 @@ public:
 					}
 
 				}
-
 			}
 		}
 		else if (state.vrm_received && rootnode != nullptr && std::strcmp(address, "/VMC/Ext/Root/Pos") == 0) {
@@ -102,6 +103,7 @@ public:
 			rootnode->rotation[1] = qy;
 			rootnode->rotation[2] = qz;
 			rootnode->rotation[3] = qw;
+
 		}
 		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Bone/Pos") == 0) {
 			const auto name = (arg++)->AsStringUnchecked();
@@ -112,7 +114,6 @@ public:
 			const auto qy = (arg++)->AsFloatUnchecked();
 			const auto qz = (arg++)->AsFloatUnchecked();
 			const auto qw = (arg++)->AsFloatUnchecked();
-
 
 			cgltf_node* node = vrm_get_humanoid_bone(name, &humanoid_mapping);
 
@@ -125,6 +126,16 @@ public:
 				node->rotation[2] = qz;
 				node->rotation[3] = qw;
 			}
+		}
+		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/T") == 0) {
+			const auto time = arg->AsFloatUnchecked();
+			const auto delta = time - lasttime_checked;
+
+			if (delta > 0.033) {
+				// Append MOTION
+				bvh_traverse_bone_motion(rootnode, &state, true);
+				lasttime_checked = time;
+			}
 
 		}
 	}
@@ -132,6 +143,7 @@ public:
 private:
 	cgltf_node* rootnode;
 	vmc2bvh_humanoid_mapping humanoid_mapping;
+	float lasttime_checked;
 
 	vmc2bvh_options options;
 	vmc2bvh_traverse_state state;
