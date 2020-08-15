@@ -23,6 +23,8 @@ public:
 		, ofstream_MOTION(options.bvhfile_MOTION)
 		, state{false, false, 0, 0, nullptr, nullptr}
 		, lasttime_checked(0)
+		, frame_count(0)
+		, humanoid_mapping{}
 	{
 
 	}
@@ -38,7 +40,7 @@ public:
 		if (!state.loaded && std::strcmp(address, "/VMC/Ext/OK") == 0 && arg->IsInt32()) {
 			const auto loaded = (arg++)->AsInt32Unchecked();
 			const auto calibrated = (arg++)->AsInt32Unchecked();
-			if (loaded == 1 && calibrated == 1) {
+			if (loaded == 1 && calibrated == 3) {
 				state.loaded = true;
 			}
 		}
@@ -56,20 +58,21 @@ public:
 					if (result == cgltf_result_success) {
 						cgltf_size index;
 						if (vrm_get_root_bone(data, options.rootbone, &index)) {
-							std::cout << "[INFO] root bone found at " << index << " name: " << data->nodes[index].name << std::endl;
+							std::cout << "[INFO] Start recording..." << std::endl;
 							rootnode = &data->nodes[index];
 
 							// Constructs humanoid-bone => node mapping 
 							humanoid_mapping = vrm_get_humanoid_mapping(data);
 
 							// Write HIERARCHY
-							std::wofstream ofstream_HIERARCHY(options.bvhfile_HIERARCHY);
+							std::ofstream ofstream_HIERARCHY(options.bvhfile_HIERARCHY);
 							state.ofstream_HIERARCHY = &ofstream_HIERARCHY;
 							state.ofstream_MOTION = &ofstream_MOTION;
 							bvh_traverse_bones(rootnode, &state);
 
 							// Write first MOTION
 							bvh_traverse_bone_motion(rootnode, &state, true);
+							frame_count++;
 
 							state.vrm_received = true;
 						}
@@ -131,12 +134,30 @@ public:
 			const auto time = arg->AsFloatUnchecked();
 			const auto delta = time - lasttime_checked;
 
-			if (delta > 0.033) {
+			const auto frame_time = 0.033f;
+
+			if (delta > frame_time) {
 				// Append MOTION
 				bvh_traverse_bone_motion(rootnode, &state, true);
 				lasttime_checked = time;
-			}
+				frame_count++;
 
+				// Only record once per 100 frames hoping to improve performance
+				if (frame_count % 100 == 0) {
+					std::ofstream ofs(options.bvhfile, std::ios_base::binary);
+
+					std::ifstream if_HIERARCHY(options.bvhfile_HIERARCHY, std::ios_base::binary | std::ios_base::app);
+					std::ifstream if_MOTION(options.bvhfile_MOTION, std::ios_base::binary);
+
+					ofs << if_HIERARCHY.rdbuf();
+					ofs << "MOTION" << std::endl;
+					ofs << "Frames: " << frame_count << std::endl;
+					ofs << "Frame Time: " << std::fixed << std::setprecision(3) << frame_time << std::endl;
+					ofs << if_MOTION.rdbuf();
+					ofs << std::endl;
+
+				}
+			}
 		}
 	}
 
@@ -144,10 +165,11 @@ private:
 	cgltf_node* rootnode;
 	vmc2bvh_humanoid_mapping humanoid_mapping;
 	float lasttime_checked;
+	std::uint32_t frame_count;
 
 	vmc2bvh_options options;
 	vmc2bvh_traverse_state state;
-	std::wofstream ofstream_MOTION;
+	std::ofstream ofstream_MOTION;
 };
 
 int main(int argc, char* argv[])
@@ -157,7 +179,7 @@ int main(int argc, char* argv[])
 	std::uint16_t port = 39539;
 	app.add_option<std::uint16_t>("-p,--port", port, "port number to bind");
 
-	std::string bvhfile = "vmc2bvh_output.bvh";
+	std::string bvhfile = "output.bvh";
 	app.add_option("-f,--file", bvhfile, "bvh file to create");
 
 	std::string rootbone_name;

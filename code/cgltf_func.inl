@@ -12,8 +12,8 @@ struct vmc2bvh_traverse_state
 	bool vrm_received;
 	std::uint32_t channels_count;
 	std::uint8_t  indent;
-	std::wofstream* ofstream_MOTION;
-	std::wofstream* ofstream_HIERARCHY;
+	std::ofstream* ofstream_MOTION;
+	std::ofstream* ofstream_HIERARCHY;
 };
 
 struct vmc2bvh_options
