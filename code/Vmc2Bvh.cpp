@@ -134,34 +134,39 @@ public:
 			const auto time = arg->AsFloatUnchecked();
 			const auto delta = time - lasttime_checked;
 
-			const auto frame_time = 0.033f;
-
 			if (delta > frame_time) {
 				// Append MOTION
 				bvh_traverse_bone_motion(rootnode, &state, true);
 				lasttime_checked = time;
 				frame_count++;
-
-				// Only record once per 100 frames hoping to improve performance
-				if (frame_count % 100 == 0) {
-					std::ofstream ofs(options.bvhfile, std::ios_base::binary);
-
-					std::ifstream if_HIERARCHY(options.bvhfile_HIERARCHY, std::ios_base::binary | std::ios_base::app);
-					std::ifstream if_MOTION(options.bvhfile_MOTION, std::ios_base::binary);
-
-					ofs << if_HIERARCHY.rdbuf();
-					ofs << "MOTION" << std::endl;
-					ofs << "Frames: " << frame_count << std::endl;
-					ofs << "Frame Time: " << std::fixed << std::setprecision(3) << frame_time << std::endl;
-					ofs << if_MOTION.rdbuf();
-					ofs << std::endl;
-
-				}
 			}
 		}
 	}
 
+	void GenerateBVH()
+	{
+		std::cout << "Generating BVH...";
+		std::ofstream ofs(options.bvhfile, std::ios::out | std::ios::binary);
+
+		std::ifstream if_HIERARCHY(options.bvhfile_HIERARCHY, std::ios::in | std::ios_base::binary);
+		std::ifstream if_MOTION(options.bvhfile_MOTION, std::ios::in | std::ios_base::binary);
+
+		std::cout << "...";
+		ofs << if_HIERARCHY.rdbuf();
+		std::cout << "...";
+		ofs << "MOTION" << std::endl;
+		ofs << "Frames: " << frame_count << std::endl;
+		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << frame_time << std::endl;
+		std::cout << "...";
+		ofs << if_MOTION.rdbuf();
+		ofs << std::endl;
+
+		std::cout << "DONE." << std::endl;
+	}
+
 private:
+	float frame_time = 0.033f;
+
 	cgltf_node* rootnode;
 	vmc2bvh_humanoid_mapping humanoid_mapping;
 	float lasttime_checked;
@@ -204,12 +209,15 @@ int main(int argc, char* argv[])
 			IpEndpointName( IpEndpointName::ANY_ADDRESS, port ),
 			&listener );
 
-	std::cout << "[INFO] listening for input on port " << port << "..." << std::endl;
-	std::cout << "[INFO] press ctrl-c to end" << std::endl;
+	std::cout << "[INFO] Listening for input on port " << port << "..." << std::endl;
+	std::cout << "[INFO] Type ANY key from keyboard to end recording and generate BVH file" << std::endl;
 
-	s.RunUntilSigInt();
+	// Wait for keyboard input
+	std::cin.get();
 
-	std::cout << "[INFO] finishing." << std::endl;
+	listener.GenerateBVH();
+
+	std::cout << "[INFO] Generated " <<  bvhfile << ". Exiting." << std::endl;
 
 	return 0;
 }
