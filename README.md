@@ -10,7 +10,7 @@ You need [VirtualMotionCapture](https://sh-akira.github.io/VirtualMotionCapture/
 - Run `Vmc2Bvh.exe` (on Windows). It listens [VMC protocol](https://sh-akira.github.io/VirtualMotionCaptureProtocol/specification) on port `39539` and then waits for calibration.
 - Launch [VirtualMotionCapture](https://sh-akira.github.io/VirtualMotionCapture/). Check `Enable OSC motion sender` from `Settings`.  Note that you'll need [paid version of VirtualMotionCapture](https://akira.fanbox.cc/) that supports OSC motion sender.
 - After you calibrate your VRM model in VirtualMotionCapture, `Vmc2Bvh.exe` starts recording motions and generate `<output file name>_HIERARCHY.txt` and  `<output file name>_MOTION.txt` in [BVH format](http://www.dcs.shef.ac.uk/intranet/research/public/resmes/CS0111.pdf).
-- In order to stop recording, *type ANY key from your keyboard* onto `Vmc2Bvh.exe` console. This will generate resulting BVH file.
+- In order to stop recording, *type Ctrl-C from your keyboard* on `Vmc2Bvh.exe` console. This will generate resulting BVH file.
 - You might want to backup generated BVH file because it will be overwritten on next launch (if you use same output file name, of course).
 
 ## Options

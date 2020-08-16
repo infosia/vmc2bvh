@@ -210,10 +210,9 @@ int main(int argc, char* argv[])
 			&listener );
 
 	std::cout << "[INFO] Listening for input on port " << port << "..." << std::endl;
-	std::cout << "[INFO] Type ANY key from keyboard to end recording and generate BVH file" << std::endl;
+	std::cout << "[INFO] Type Ctrl-C to end recording and generate BVH file" << std::endl;
 
-	// Wait for keyboard input
-	std::cin.get();
+	s.RunUntilSigInt();
 
 	listener.GenerateBVH();
 
