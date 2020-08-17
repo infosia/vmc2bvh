@@ -14,6 +14,7 @@ struct vmc2bvh_traverse_state
 	std::uint8_t  indent;
 	std::ofstream* ofstream_MOTION;
 	std::ofstream* ofstream_HIERARCHY;
+	float* translation;
 };
 
 struct vmc2bvh_options
@@ -520,7 +521,7 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 
 		if (is_root) {
 			*stream << std::fixed << std::setprecision(7)
-				<< (-node->translation[0]) << " " << node->translation[1] << " " << (-node->translation[2]) << " "
+				<< (-node->translation[0] -state->translation[0]) << " " << node->translation[1] + state->translation[1] << " " << (-node->translation[0] + state->translation[2]) << " "
 				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
 		}
 		else {

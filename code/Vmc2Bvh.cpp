@@ -70,6 +70,7 @@ public:
 						if (vrm_get_root_bone(vrmdata, options.rootbone, &index)) {
 							std::cout << "[INFO] Start recording..." << std::endl;
 							rootnode = &vrmdata->nodes[index];
+							state.translation = rootnode->translation;
 
 							// Constructs humanoid-bone => node mapping 
 							humanoid_mapping = vrm_get_humanoid_mapping(vrmdata);
