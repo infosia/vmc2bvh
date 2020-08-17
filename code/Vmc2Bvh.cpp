@@ -18,6 +18,7 @@ class Vmc2BvhPacketListener : public OscPacketListener {
 public:
 
 	Vmc2BvhPacketListener(const vmc2bvh_options options) : OscPacketListener()
+		, vrmdata(nullptr)
 		, rootnode(nullptr)
 		, options(options)
 		, ofstream_MOTION(options.bvhfile_MOTION)
@@ -28,7 +29,13 @@ public:
 	{
 
 	}
-	virtual ~Vmc2BvhPacketListener() = default;
+
+	virtual ~Vmc2BvhPacketListener() 
+	{
+		if (vrmdata != nullptr) {
+			cgltf_free(vrmdata);
+		}
+	}
 
 	virtual void ProcessMessage(const osc::ReceivedMessage& m,
 		const IpEndpointName& remoteEndpoint)
@@ -52,17 +59,20 @@ public:
 					cgltf_options parse_options = {};
 					parse_options.file.read = &vrm_file_read;
 
-					cgltf_data* data = NULL;
-					const auto result = cgltf_parse_file(&parse_options, value, &data);
+					if (vrmdata != nullptr) {
+						cgltf_free(vrmdata);
+					}
+
+					const auto result = cgltf_parse_file(&parse_options, value, &vrmdata);
 
 					if (result == cgltf_result_success) {
 						cgltf_size index;
-						if (vrm_get_root_bone(data, options.rootbone, &index)) {
+						if (vrm_get_root_bone(vrmdata, options.rootbone, &index)) {
 							std::cout << "[INFO] Start recording..." << std::endl;
-							rootnode = &data->nodes[index];
+							rootnode = &vrmdata->nodes[index];
 
 							// Constructs humanoid-bone => node mapping 
-							humanoid_mapping = vrm_get_humanoid_mapping(data);
+							humanoid_mapping = vrm_get_humanoid_mapping(vrmdata);
 
 							// Write HIERARCHY
 							std::ofstream ofstream_HIERARCHY(options.bvhfile_HIERARCHY);
@@ -167,6 +177,7 @@ public:
 private:
 	float frame_time = 0.033f;
 
+	cgltf_data* vrmdata;
 	cgltf_node* rootnode;
 	vmc2bvh_humanoid_mapping humanoid_mapping;
 	float lasttime_checked;
