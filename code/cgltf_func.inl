@@ -507,6 +507,15 @@ static void bvh_indent(vmc2bvh_traverse_state* state)
 	}
 }
 
+vmc2bvh_quaternion vmc2bvh_quaternion_multiply(const vmc2bvh_quaternion q1, const vmc2bvh_quaternion q2) {
+	vmc2bvh_quaternion q;
+	q.x =  q1.x * q2.w + q1.y * q2.z - q1.z * q2.y + q1.w * q2.x;
+	q.y = -q1.x * q2.z + q1.y * q2.w + q1.z * q2.x + q1.w * q2.y;
+	q.z =  q1.x * q2.y - q1.y * q2.x + q1.z * q2.w + q1.w * q2.z;
+	q.w = -q1.x * q2.x - q1.y * q2.y - q1.z * q2.z + q1.w * q2.w;
+	return q;
+}
+
 static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* state, const bool is_root, const bool motion_in_place)
 {
 	// Treat first child of root node as a initial node because root node is not actually part of hierarchy
@@ -518,11 +527,10 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 	auto stream = state->ofstream_MOTION;
 	if (node->children_count > 0) {
 		const vmc2bvh_quaternion q = { node->rotation[0], -node->rotation[1], -node->rotation[2], node->rotation[3]	 };
-		const auto degree = quaternion_to_degree(q);
 
 		if (is_root) {
 			const vmc2bvh_quaternion root_q = { state->rotation[0], -state->rotation[1], -state->rotation[2], state->rotation[3] };
-			const auto root_degree = quaternion_to_degree(root_q);
+			const auto degree = quaternion_to_degree(vmc2bvh_quaternion_multiply(q, root_q));
 
 			const cgltf_float x = -node->translation[0] - (motion_in_place ? 0 : state->translation[0]);
 			const cgltf_float y =  node->translation[1] + (motion_in_place ? 0 : state->translation[1]);
@@ -530,9 +538,10 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 
 			*stream << std::fixed << std::setprecision(7)
 				<< x << " " << y << " " << z << " "
-				<< (root_degree.roll + degree.roll) << " " << (root_degree.pitch + degree.pitch) << " " << (root_degree.yaw + degree.yaw) << " ";
+				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
 		}
 		else {
+			const auto degree = quaternion_to_degree(q);
 			*stream << std::fixed << std::setprecision(7)
 				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
 		}
