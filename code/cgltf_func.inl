@@ -15,6 +15,7 @@ struct vmc2bvh_traverse_state
 	std::ofstream* ofstream_MOTION;
 	std::ofstream* ofstream_HIERARCHY;
 	float* translation;
+	float* rotation;
 };
 
 struct vmc2bvh_options
@@ -516,18 +517,20 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 
 	auto stream = state->ofstream_MOTION;
 	if (node->children_count > 0) {
-		vmc2bvh_quaternion q = { node->rotation[0], -node->rotation[1], -node->rotation[2], node->rotation[3]	 };
-
+		const vmc2bvh_quaternion q = { node->rotation[0], -node->rotation[1], -node->rotation[2], node->rotation[3]	 };
 		const auto degree = quaternion_to_degree(q);
 
 		if (is_root) {
-			cgltf_float x = -node->translation[0] - (motion_in_place ? 0 : state->translation[0]);
-			cgltf_float y =  node->translation[1] + (motion_in_place ? 0 : state->translation[1]);
-			cgltf_float z = -node->translation[0] + (motion_in_place ? 0 : state->translation[2]);
+			const vmc2bvh_quaternion root_q = { state->rotation[0], -state->rotation[1], -state->rotation[2], state->rotation[3] };
+			const auto root_degree = quaternion_to_degree(root_q);
+
+			const cgltf_float x = -node->translation[0] - (motion_in_place ? 0 : state->translation[0]);
+			const cgltf_float y =  node->translation[1] + (motion_in_place ? 0 : state->translation[1]);
+			const cgltf_float z = -node->translation[0] + (motion_in_place ? 0 : state->translation[2]);
 
 			*stream << std::fixed << std::setprecision(7)
 				<< x << " " << y << " " << z << " "
-				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
+				<< (root_degree.roll + degree.roll) << " " << (root_degree.pitch + degree.pitch) << " " << (root_degree.yaw + degree.yaw) << " ";
 		}
 		else {
 			*stream << std::fixed << std::setprecision(7)

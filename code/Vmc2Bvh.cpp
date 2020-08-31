@@ -71,8 +71,9 @@ public:
 							std::cout << "[INFO] Start recording..." << std::endl;
 							rootnode = &vrmdata->nodes[index];
 
-							// Keep track of root motion
+							// Keep track of root motion and rotation
 							state.translation = rootnode->translation;
+							state.rotation = rootnode->rotation;
 
 							// Constructs humanoid-bone => node mapping 
 							humanoid_mapping = vrm_get_humanoid_mapping(vrmdata);
