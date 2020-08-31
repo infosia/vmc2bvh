@@ -70,6 +70,8 @@ public:
 						if (vrm_get_root_bone(vrmdata, options.rootbone, &index)) {
 							std::cout << "[INFO] Start recording..." << std::endl;
 							rootnode = &vrmdata->nodes[index];
+
+							// Keep track of root motion
 							state.translation = rootnode->translation;
 
 							// Constructs humanoid-bone => node mapping 
@@ -82,7 +84,7 @@ public:
 							bvh_traverse_bones(rootnode, &state);
 
 							// Write first MOTION
-							bvh_traverse_bone_motion(rootnode, &state, true);
+							bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
 							frame_count++;
 
 							state.vrm_received = true;
@@ -147,7 +149,7 @@ public:
 
 			if (delta > frame_time) {
 				// Append MOTION
-				bvh_traverse_bone_motion(rootnode, &state, true);
+				bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
 				lasttime_checked = time;
 				frame_count++;
 			}
@@ -202,11 +204,15 @@ int main(int argc, char* argv[])
 	std::string rootbone_name;
 	app.add_option("-b,--bone", rootbone_name, "root bone name");
 
+	bool motion_in_place = false;
+	app.add_flag("-i,--in-place", motion_in_place, "disables root translation");
+
 	CLI11_PARSE(app, argc, argv);
 
 	vmc2bvh_options options = {};
 	options.rootbone = rootbone_name;
 	options.bvhfile  = bvhfile;
+	options.motion_in_place = motion_in_place;
 
 	std::stringstream ss_HIERARCHY;
 	ss_HIERARCHY << bvhfile << ".HIERARCHY.txt";

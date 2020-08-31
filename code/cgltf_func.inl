@@ -23,6 +23,7 @@ struct vmc2bvh_options
 	std::string bvhfile;
 	std::string bvhfile_HIERARCHY;
 	std::string bvhfile_MOTION;
+	bool motion_in_place;
 };
 
 struct vmc2bvh_quaternion {
@@ -505,11 +506,11 @@ static void bvh_indent(vmc2bvh_traverse_state* state)
 	}
 }
 
-static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* state, const bool is_root)
+static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* state, const bool is_root, const bool motion_in_place)
 {
 	// Treat first child of root node as a initial node because root node is not actually part of hierarchy
 	if (node->parent == nullptr && node->children_count > 0) {
-		bvh_traverse_bone_motion(node->children[0], state, true);
+		bvh_traverse_bone_motion(node->children[0], state, true, motion_in_place);
 		return;
 	}
 
@@ -520,8 +521,12 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 		const auto degree = quaternion_to_degree(q);
 
 		if (is_root) {
+			cgltf_float x = -node->translation[0] - (motion_in_place ? 0 : state->translation[0]);
+			cgltf_float y =  node->translation[1] + (motion_in_place ? 0 : state->translation[1]);
+			cgltf_float z = -node->translation[0] + (motion_in_place ? 0 : state->translation[2]);
+
 			*stream << std::fixed << std::setprecision(7)
-				<< (-node->translation[0] -state->translation[0]) << " " << node->translation[1] + state->translation[1] << " " << (-node->translation[0] + state->translation[2]) << " "
+				<< x << " " << y << " " << z << " "
 				<< degree.roll << " " << degree.pitch << " " << degree.yaw << " ";
 		}
 		else {
@@ -531,7 +536,7 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 	}
 
 	for (cgltf_size i = 0; i < node->children_count; i++) {
-		bvh_traverse_bone_motion(node->children[i], state, false);
+		bvh_traverse_bone_motion(node->children[i], state, false, motion_in_place);
 	}
 
 	if (is_root) {
