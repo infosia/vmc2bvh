@@ -25,6 +25,7 @@ struct vmc2bvh_options
 	std::string bvhfile_HIERARCHY;
 	std::string bvhfile_MOTION;
 	bool motion_in_place;
+	float interval;
 };
 
 struct vmc2bvh_quaternion {

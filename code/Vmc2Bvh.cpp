@@ -148,7 +148,7 @@ public:
 			const auto time = arg->AsFloatUnchecked();
 			const auto delta = time - lasttime_checked;
 
-			if (delta > frame_time) {
+			if (delta > options.interval) {
 				// Append MOTION
 				bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
 				lasttime_checked = time;
@@ -170,7 +170,7 @@ public:
 		std::cout << "...";
 		ofs << "MOTION" << std::endl;
 		ofs << "Frames: " << frame_count << std::endl;
-		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << frame_time << std::endl;
+		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << options.interval << std::endl;
 		std::cout << "...";
 		ofs << if_MOTION.rdbuf();
 		ofs << std::endl;
@@ -179,8 +179,6 @@ public:
 	}
 
 private:
-	float frame_time = 0.033f;
-
 	cgltf_data* vrmdata;
 	cgltf_node* rootnode;
 	vmc2bvh_humanoid_mapping humanoid_mapping;
@@ -208,12 +206,16 @@ int main(int argc, char* argv[])
 	bool motion_in_place = false;
 	app.add_flag("-i,--in-place", motion_in_place, "disables root translation");
 
+	std::uint8_t fps = 60;
+	app.add_option("-s,--fps", fps, "frame per second");
+
 	CLI11_PARSE(app, argc, argv);
 
 	vmc2bvh_options options = {};
 	options.rootbone = rootbone_name;
 	options.bvhfile  = bvhfile;
 	options.motion_in_place = motion_in_place;
+	options.interval = 1.0f / fps;
 
 	std::stringstream ss_HIERARCHY;
 	ss_HIERARCHY << bvhfile << ".HIERARCHY.txt";
