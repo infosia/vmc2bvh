@@ -532,7 +532,7 @@ static void bvh_traverse_bone_motion(cgltf_node* node, vmc2bvh_traverse_state* s
 
 		if (is_root) {
 			const vmc2bvh_quaternion root_q = { state->rotation[0], -state->rotation[1], -state->rotation[2], state->rotation[3] };
-			const auto degree = quaternion_to_degree(bvh_quaternion_multiply(q, root_q));
+			const auto degree = quaternion_to_degree(bvh_quaternion_multiply(root_q, q));
 
 			const cgltf_float x = -node->translation[0] - (motion_in_place ? 0 : state->translation[0]);
 			const cgltf_float y =  node->translation[1] + (motion_in_place ? 0 : state->translation[1]);
