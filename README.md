@@ -19,6 +19,7 @@ You need [VirtualMotionCapture](https://sh-akira.github.io/VirtualMotionCapture/
 - `--file <output file name>` ... Output BVH file name to generate. `output.bvh` by default.
 - `--bone <root bone name>`  ... Name of root bone. By default it searches `Root` or `Armature`.
 - `--in-place`  ... Disable root bone translation. This may be useful to record motions for games.
+- `--fps`  ... Frame per second. `60` by default.
 
 ## Building
 
