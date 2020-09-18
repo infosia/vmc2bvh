@@ -3,6 +3,7 @@
 #include <sstream>
 #include <fstream>
 #include <cmath>
+#include <chrono>
 
 #define MATH_PI   3.14159265358979323846264338327950288
 
@@ -24,8 +25,9 @@ struct vmc2bvh_options
 	std::string bvhfile;
 	std::string bvhfile_HIERARCHY;
 	std::string bvhfile_MOTION;
+	std::string bvhfile_BLEND;
 	bool motion_in_place;
-	float interval;
+	std::chrono::milliseconds interval;
 };
 
 struct vmc2bvh_quaternion {

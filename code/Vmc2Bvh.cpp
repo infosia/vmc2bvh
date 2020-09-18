@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+#include <unordered_map>
 
 #include "osc/OscReceivedElements.h"
 #include "osc/OscPacketListener.h"
@@ -22,15 +23,17 @@ public:
 		, rootnode(nullptr)
 		, options(options)
 		, ofstream_MOTION(options.bvhfile_MOTION)
-		, state{false, false, 0, 0, nullptr, nullptr}
-		, lasttime_checked(0)
+		, ofstream_BLEND(options.bvhfile_BLEND)
+		, state{ false, false, 0, 0, nullptr, nullptr }
+		, lasttime_checked()
 		, frame_count(0)
 		, humanoid_mapping{}
+		, blendshapes()
 	{
 
 	}
 
-	virtual ~Vmc2BvhPacketListener() 
+	virtual ~Vmc2BvhPacketListener()
 	{
 		if (vrmdata != nullptr) {
 			cgltf_free(vrmdata);
@@ -83,6 +86,9 @@ public:
 							state.ofstream_HIERARCHY = &ofstream_HIERARCHY;
 							state.ofstream_MOTION = &ofstream_MOTION;
 							bvh_traverse_bones(rootnode, &state);
+							
+							// Blendshape
+							ofstream_BLEND << "[" << std::endl;
 
 							// Write first MOTION
 							bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
@@ -144,10 +150,31 @@ public:
 				node->rotation[3] = qw;
 			}
 		}
-		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/T") == 0) {
-			const auto time = arg->AsFloatUnchecked();
-			const auto delta = time - lasttime_checked;
+		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Blend/Val") == 0) {
+			const auto name  = (arg++)->AsStringUnchecked();
+			const auto value = (arg++)->AsFloatUnchecked();
 
+			blendshapes[name] = value;
+		}
+		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Blend/Apply") == 0) {
+			ofstream_BLEND << "{\"index\":" << frame_count << ", \"value\": {";
+
+			auto p = blendshapes.begin();
+			while (p != blendshapes.end()) {
+				ofstream_BLEND << "\"" << p->first << "\":" << p->second;
+				p++;
+				if (p != blendshapes.end()) {
+					ofstream_BLEND << ",";
+				}
+			}
+			ofstream_BLEND << "}}," << std::endl;
+
+			blendshapes.clear();
+		}
+
+		if (state.vrm_received) {
+			const auto time = std::chrono::steady_clock::now();
+			const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(time - lasttime_checked);
 			if (delta > options.interval) {
 				// Append MOTION
 				bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
@@ -170,10 +197,12 @@ public:
 		std::cout << "...";
 		ofs << "MOTION" << std::endl;
 		ofs << "Frames: " << frame_count << std::endl;
-		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << options.interval << std::endl;
+		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << std::chrono::duration<float>(options.interval).count() << std::endl;
 		std::cout << "...";
 		ofs << if_MOTION.rdbuf();
 		ofs << std::endl;
+
+		ofstream_BLEND << "]" << std::endl;
 
 		std::cout << "DONE." << std::endl;
 	}
@@ -182,12 +211,14 @@ private:
 	cgltf_data* vrmdata;
 	cgltf_node* rootnode;
 	vmc2bvh_humanoid_mapping humanoid_mapping;
-	float lasttime_checked;
+	std::chrono::steady_clock::time_point lasttime_checked;
 	std::uint32_t frame_count;
+	std::unordered_map<std::string, float> blendshapes;
 
 	vmc2bvh_options options;
 	vmc2bvh_traverse_state state;
 	std::ofstream ofstream_MOTION;
+	std::ofstream ofstream_BLEND;
 };
 
 int main(int argc, char* argv[])
@@ -215,7 +246,7 @@ int main(int argc, char* argv[])
 	options.rootbone = rootbone_name;
 	options.bvhfile  = bvhfile;
 	options.motion_in_place = motion_in_place;
-	options.interval = 1.0f / fps;
+	options.interval = std::chrono::milliseconds(1000 / fps);
 
 	std::stringstream ss_HIERARCHY;
 	ss_HIERARCHY << bvhfile << ".HIERARCHY.txt";
@@ -224,6 +255,10 @@ int main(int argc, char* argv[])
 	std::stringstream ss_MOTION;
 	ss_MOTION << bvhfile << ".MOTION.txt";
 	options.bvhfile_MOTION = ss_MOTION.str();
+
+	std::stringstream ss_BLEND;
+	ss_BLEND << bvhfile << ".BLEND.json";
+	options.bvhfile_BLEND = ss_BLEND.str();
 
 	Vmc2BvhPacketListener listener(options);
 	UdpListeningReceiveSocket s(
