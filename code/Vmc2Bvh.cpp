@@ -202,7 +202,7 @@ public:
 		std::cout << "...";
 		ofs << "MOTION" << std::endl;
 		ofs << "Frames: " << frame_count << std::endl;
-		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << std::chrono::duration<float>(options.interval).count() << std::endl;
+		ofs << "Frame Time: " << std::fixed << std::setprecision(3) << (1.0f / options.fps) << std::endl;
 		std::cout << "...";
 		ofs << if_MOTION.rdbuf();
 		ofs << std::endl;
@@ -256,6 +256,7 @@ int main(int argc, char* argv[])
 	options.bvhfile  = bvhfile;
 	options.motion_in_place = motion_in_place;
 	options.interval = std::chrono::milliseconds((1000 / fps) - delay);
+	options.fps = fps;
 
 	std::stringstream ss_HIERARCHY;
 	ss_HIERARCHY << bvhfile << ".HIERARCHY.txt";

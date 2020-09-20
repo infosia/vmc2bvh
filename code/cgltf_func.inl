@@ -28,6 +28,7 @@ struct vmc2bvh_options
 	std::string bvhfile_BLEND;
 	bool motion_in_place;
 	std::chrono::milliseconds interval;
+	std::uint8_t fps;
 };
 
 struct vmc2bvh_quaternion {
