@@ -90,7 +90,7 @@ public:
 							// Blendshape
 							ofstream_BLEND << "[" << std::endl;
 
-							// Write first MOTION
+							// Write first MOTION (T-pose)
 							bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
 							frame_count++;
 
@@ -154,9 +154,13 @@ public:
 			const auto name  = (arg++)->AsStringUnchecked();
 			const auto value = (arg++)->AsFloatUnchecked();
 
-			blendshapes[name] = value;
+			// Save blendshape value only when value has changed
+			const auto old_value = blendshapes_old.find(name);
+			if (old_value == blendshapes_old.end() || old_value->second != value) {
+				blendshapes[name] = value;
+			}
 		}
-		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Blend/Apply") == 0) {
+		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Blend/Apply") == 0 && blendshapes.size() > 0) {
 			ofstream_BLEND << "{\"index\":" << frame_count << ", \"value\": {";
 
 			auto p = blendshapes.begin();
@@ -169,6 +173,7 @@ public:
 			}
 			ofstream_BLEND << "}}," << std::endl;
 
+			blendshapes_old = blendshapes;
 			blendshapes.clear();
 		}
 
@@ -214,6 +219,7 @@ private:
 	std::chrono::steady_clock::time_point lasttime_checked;
 	std::uint32_t frame_count;
 	std::unordered_map<std::string, float> blendshapes;
+	std::unordered_map<std::string, float> blendshapes_old;
 
 	vmc2bvh_options options;
 	vmc2bvh_traverse_state state;
@@ -240,13 +246,16 @@ int main(int argc, char* argv[])
 	std::uint8_t fps = 60;
 	app.add_option("-s,--fps", fps, "frame per second");
 
+	std::uint8_t delay = 10;
+	app.add_option("-d,--delay", fps, "latency buffer in milliseconds");
+
 	CLI11_PARSE(app, argc, argv);
 
 	vmc2bvh_options options = {};
 	options.rootbone = rootbone_name;
 	options.bvhfile  = bvhfile;
 	options.motion_in_place = motion_in_place;
-	options.interval = std::chrono::milliseconds(1000 / fps);
+	options.interval = std::chrono::milliseconds((1000 / fps) - delay);
 
 	std::stringstream ss_HIERARCHY;
 	ss_HIERARCHY << bvhfile << ".HIERARCHY.txt";
