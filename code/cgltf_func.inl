@@ -27,6 +27,7 @@ struct vmc2bvh_options
 	std::string bvhfile_MOTION;
 	std::string bvhfile_BLEND;
 	bool motion_in_place;
+	bool record_facial_expression;
 	std::chrono::milliseconds interval;
 	std::uint8_t fps;
 };

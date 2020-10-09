@@ -88,7 +88,9 @@ public:
 							bvh_traverse_bones(rootnode, &state);
 							
 							// Blendshape
-							ofstream_BLEND << "[" << std::endl;
+							if (options.record_facial_expression) {
+								ofstream_BLEND << "[" << std::endl;
+							}
 
 							// Write first MOTION (T-pose)
 							bvh_traverse_bone_motion(rootnode, &state, true, options.motion_in_place);
@@ -150,7 +152,7 @@ public:
 				node->rotation[3] = qw;
 			}
 		}
-		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Blend/Val") == 0) {
+		else if (state.vrm_received && options.record_facial_expression && std::strcmp(address, "/VMC/Ext/Blend/Val") == 0) {
 			const auto name  = (arg++)->AsStringUnchecked();
 			const auto value = (arg++)->AsFloatUnchecked();
 
@@ -160,7 +162,7 @@ public:
 				blendshapes[name] = value;
 			}
 		}
-		else if (state.vrm_received && std::strcmp(address, "/VMC/Ext/Blend/Apply") == 0 && blendshapes.size() > 0) {
+		else if (state.vrm_received && options.record_facial_expression && std::strcmp(address, "/VMC/Ext/Blend/Apply") == 0 && blendshapes.size() > 0) {
 			ofstream_BLEND << "{\"index\":" << frame_count << ", \"value\": {";
 
 			auto p = blendshapes.begin();
@@ -207,7 +209,9 @@ public:
 		ofs << if_MOTION.rdbuf();
 		ofs << std::endl;
 
-		ofstream_BLEND << "]" << std::endl;
+		if (options.record_facial_expression) {
+			ofstream_BLEND << "]" << std::endl;
+		}
 
 		std::cout << "DONE." << std::endl;
 	}
@@ -243,6 +247,9 @@ int main(int argc, char* argv[])
 	bool motion_in_place = false;
 	app.add_flag("-i,--in-place", motion_in_place, "disables root translation");
 
+	bool record_facial_expression = false;
+	app.add_flag("-e,--record_facial_expression", record_facial_expression, "record facial expression");
+
 	std::uint8_t fps = 60;
 	app.add_option("-s,--fps", fps, "frame per second");
 
@@ -255,6 +262,7 @@ int main(int argc, char* argv[])
 	options.rootbone = rootbone_name;
 	options.bvhfile  = bvhfile;
 	options.motion_in_place = motion_in_place;
+	options.record_facial_expression = record_facial_expression;
 	options.interval = std::chrono::milliseconds((1000 / fps) - delay);
 	options.fps = fps;
 
