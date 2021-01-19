@@ -254,7 +254,7 @@ int main(int argc, char* argv[])
 	app.add_option("-s,--fps", fps, "frame per second");
 
 	std::uint8_t delay = 10;
-	app.add_option("-d,--delay", fps, "latency buffer in milliseconds");
+	app.add_option("-d,--delay", delay, "latency buffer in milliseconds");
 
 	CLI11_PARSE(app, argc, argv);
 
